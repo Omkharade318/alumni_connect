@@ -144,4 +144,11 @@ lib/
 #### Drawer Screens-
 |  Drawer  |   Alumni Directory   |  My Connections  | Job & Mentorship | News & Updates | Campaigns & Donate |
 |------------------|------------------|------------------|------------------|------------------|------------------|
-| <img src="docs/screenshots/drawer.jpeg" width="200"  alt="Drawer"> | <img src="docs/screenshots/alumni_directory_screen.jpeg" width="200"  alt="Directory"> | <img src="docs/screenshots/connections_screen.jpeg" width="200"  alt="Order Details"> | <img src="docs/screenshots/job_and_mentorship_screen.jpeg" width="200"  alt="Connections"> | <img src="docs/screenshots/news_and_updates.jpeg" width="200"  alt="Job & Mentorship"> | <img src="docs/screenshots/news_and_updates.jpeg" width="200"  alt="News"> |
+| <img src="docs/screenshots/drawer.jpeg" width="200"  alt="Drawer"> | <img src="docs/screenshots/alumni_directory_screen.jpeg" width="200"  alt="Directory"> | <img src="docs/screenshots/connections_screen.jpeg" width="200"  alt="Order Details"> | <img src="docs/screenshots/job_and_mentorship_screen.jpeg" width="200"  alt="Connections"> | <img src="docs/screenshots/news_and_updates.jpeg" width="200"  alt="Job & Mentorship"> | <img src="docs/screenshots/campaigns.jpeg" width="200"  alt="campaigns"> | 
+| Settings | Search Alumni | connection Request |  Fund Campaign  |
+<img src="docs/screenshots/Setting .jpeg" width="200"  alt="Settings"> | <img src="docs/screenshots/directory_search.jpeg" width="200"  alt="search"> | <img src="docs/screenshots/connection_request_screen.jpeg" width="200"  alt="Jobs"> | <img src="docs/screenshots/fund_campaign.jpeg" width="200"  alt="News">
+
+### Admin App:
+| Admin Dashboard  |   Manage Events | Manage Donations | News & Updates | Manage Jobs |
+|------------------|------------------|------------------|------------------|------------------|
+| <img src="docs/screenshots/admin_dashboard.jpeg" width="200"  alt="Dashboard"> |  <img src="docs/screenshots/admin_create_event.jpeg" width="200"  alt="Events"> |  <img src="docs/screenshots/admin_manage_donation.jpeg" width="200"  alt="Donation">  |  <img src="docs/screenshots/admin_page_news.jpeg" width="200"  alt="News"> |  <img src="docs/screenshots/admin_manage_job.jpeg" width="200"  alt="Job"> 
