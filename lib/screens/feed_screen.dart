@@ -82,7 +82,8 @@ class FeedScreen extends StatelessWidget {
 
   void _showCreatePostDialog(BuildContext context) {
     final contentController = TextEditingController();
-    List<File> selectedImages = [];
+    final locationController = TextEditingController(); // Added to match the UI
+    File? selectedImage; // Adapted to a single image to match the prominent UI style
     bool isPosting = false;
 
     final user = context.read<AuthProvider>().currentUser;
@@ -92,155 +93,231 @@ class FeedScreen extends StatelessWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-                  ),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Create Post', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded, color: Colors.grey),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onPressed: () => Navigator.pop(ctx),
+        builder: (context, setModalState) {
+          final bool canPost = !isPosting &&
+              (contentController.text.trim().isNotEmpty || selectedImage != null);
+
+          // A soft color for the borders to match the image's aesthetic
+          final Color borderColor = Colors.grey.shade400;
+
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+            child: Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Soft Drag Handle matching the image
+                  Center(
+                    child: Container(
+                      width: 32,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryRed.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: contentController,
-                  maxLines: null,
-                  minLines: 3,
-                  textInputAction: TextInputAction.newline,
-                  style: const TextStyle(fontSize: 16, height: 1.4),
-                  decoration: const InputDecoration(
-                    hintText: 'What do you want to talk about?',
-                    hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.zero,
                   ),
-                ),
-                const SizedBox(height: 16),
-                if (selectedImages.isNotEmpty) ...[
-                  SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: selectedImages.length,
-                      itemBuilder: (_, i) => Stack(
+
+                  // Prominent Hero Image Picker / Preview
+                  GestureDetector(
+                    onTap: isPosting
+                        ? null
+                        : () async {
+                      final picker = ImagePicker();
+                      final image = await picker.pickImage(source: ImageSource.gallery);
+                      if (image != null) {
+                        setModalState(() {
+                          selectedImage = File(image.path);
+                        });
+                      }
+                    },
+                    child: Container(
+                      height: 220,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(16),
+                        border: selectedImage == null ? Border.all(color: borderColor) : null,
+                      ),
+                      child: selectedImage != null
+                          ? Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: Image.file(selectedImages[i], width: 120, height: 120, fit: BoxFit.cover),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(16),
+                            child: Image.file(
+                              selectedImage!,
+                              fit: BoxFit.cover,
                             ),
                           ),
                           Positioned(
-                            top: 6,
-                            right: 18,
+                            top: 12,
+                            right: 12,
                             child: GestureDetector(
-                              onTap: () => setModalState(() => selectedImages.removeAt(i)),
+                              onTap: () => setModalState(() => selectedImage = null),
                               child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                                child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.6),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
                               ),
                             ),
                           ),
+                        ],
+                      )
+                          : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_photo_alternate_outlined, size: 48, color: Colors.grey.shade400),
+                          const SizedBox(height: 8),
+                          Text('Tap to add photo', style: TextStyle(color: Colors.grey.shade500)),
                         ],
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
-                ],
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.image_outlined, color: AppTheme.primaryRed, size: 28),
-                      onPressed: isPosting ? null : () async {
-                        final picker = ImagePicker();
-                        final images = await picker.pickMultiImage();
-                        if (images.isNotEmpty) {
-                          setModalState(() {
-                            selectedImages.addAll(images.map((e) => File(e.path)));
-                          });
-                        }
-                      },
-                    ),
-                    const Spacer(),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryRed,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+
+                  // Caption Field
+                  TextField(
+                    controller: contentController,
+                    maxLines: 4,
+                    minLines: 3,
+                    textInputAction: TextInputAction.newline,
+                    onChanged: (text) => setModalState(() {}),
+                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+                    decoration: InputDecoration(
+                      hintText: 'Write a caption...',
+                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
+                      contentPadding: const EdgeInsets.all(16),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: borderColor),
                       ),
-                      onPressed: (isPosting || (contentController.text.trim().isEmpty && selectedImages.isEmpty))
-                          ? null
-                          : () async {
-                        if (user == null) return;
-                        setModalState(() => isPosting = true);
-                        try {
-                          List<String> imageUrls = [];
-                          if (selectedImages.isNotEmpty) {
-                            for (var image in selectedImages) {
-                              final url = await StorageService().uploadPostImage(user.uid, image);
-                              imageUrls.add(url);
-                            }
-                          }
-                          final post = PostModel(
-                            id: DateTime.now().millisecondsSinceEpoch.toString(),
-                            userId: user.uid,
-                            userName: user.name,
-                            userImage: user.profileImage,
-                            userJobTitle: user.jobTitle,
-                            userDegree: user.degree,
-                            userBranch: user.branch,
-                            userBatch: user.batch,
-                            content: contentController.text.trim(),
-                            imageUrls: imageUrls,
-                            createdAt: DateTime.now(),
-                          );
-                          await FirestoreService().createPost(post);
-                          if (context.mounted) Navigator.pop(ctx);
-                        } catch (e) {
-                          if (context.mounted) {
-                            setModalState(() => isPosting = false);
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to post: $e')));
-                          }
-                        }
-                      },
-                      child: isPosting
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                          : const Text('Post', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.primaryRed.withOpacity(0.5), width: 1.5),
+                      ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Location Field
+                  TextField(
+                    controller: locationController,
+                    style: const TextStyle(fontSize: 15, color: Colors.black87),
+                    decoration: InputDecoration(
+                      hintText: 'Add location (optional)',
+                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
+                      prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.primaryRed.withOpacity(0.5), size: 22),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: borderColor),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppTheme.primaryRed.withOpacity(0.5), width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Bottom Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 50,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.primaryRed.withOpacity(0.7),
+                              side: BorderSide(color: AppTheme.primaryRed.withOpacity(0.4)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                            ),
+                            onPressed: isPosting ? null : () => Navigator.pop(ctx),
+                            child: const Text('Cancel', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: SizedBox(
+                          height: 50,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryRed.withOpacity(canPost ? 0.9 : 0.4),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                            ),
+                            onPressed: !canPost
+                                ? null
+                                : () async {
+                              if (user == null) return;
+                              setModalState(() => isPosting = true);
+                              try {
+                                List<String> imageUrls = [];
+                                if (selectedImage != null) {
+                                  final url = await StorageService().uploadPostImage(user.uid, selectedImage!);
+                                  imageUrls.add(url);
+                                }
+
+                                final post = PostModel(
+                                  id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                  userId: user.uid,
+                                  userName: user.name,
+                                  userImage: user.profileImage,
+                                  userJobTitle: user.jobTitle,
+                                  userDegree: user.degree,
+                                  userBranch: user.branch,
+                                  userBatch: user.batch,
+                                  content: contentController.text.trim(),
+                                  imageUrls: imageUrls,
+                                  // Note: To use `locationController.text`, add a location field to your PostModel
+                                  createdAt: DateTime.now(),
+                                );
+
+                                await FirestoreService().createPost(post);
+                                if (context.mounted) Navigator.pop(ctx);
+                              } catch (e) {
+                                if (context.mounted) {
+                                  setModalState(() => isPosting = false);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to post: $e'),
+                                      behavior: SnackBarBehavior.floating,
+                                      backgroundColor: Colors.red.shade600,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            child: isPosting
+                                ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5)
+                            )
+                                : const Text('Post', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

@@ -20,7 +20,7 @@ void main() async {
     try {
       print('Alumni Connect: Initializing Supabase...');
       await Supabase.initialize(
-        url: 'https://pgfdqvtlpiiwvwvwvqzfgs.supabase.co',
+        url: 'https://pgfdqvtlpiiwvwvqzfgs.supabase.co',
         anonKey: 'sb_publishable_4DyMdv2Uev08ejpJ6josCA_AUvsRNm_',
       ).timeout(const Duration(seconds: 5));
       print('Alumni Connect: Supabase initialized successfully');
