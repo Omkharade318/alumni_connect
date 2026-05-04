@@ -125,3 +125,23 @@ lib/
 - **Theme**: Red (#8B1538) and white
 - **Architecture**: MVVM with Provider
 - **Navigation**: Bottom nav (Home, Connections, Search, Events, Profile) + Drawer
+
+## Screenshots
+
+### User App:
+
+#### Auth screens-
+|   Login Screen   | Signup Screen |
+|------------------|-----------------|
+| <img src="docs/screenshots/signin_screen.jpeg" width="200"  alt="Login Screen"> | <img src="docs/screenshots/signup_screen.jpeg" width="200"  alt="Signup Screen">
+
+#### Bottombar Screens-
+| Home Screen | Feed Screen | Messages Screen | Events Screen | Profile Screen |
+|------------------|------------------|------------------|------------------|------------------|
+| <img src="docs/screenshots/Homepage1.jpeg" width="200"  alt="Home Screen"> | <img src="docs/screenshots/feed_screen.jpeg" width="200"  alt="Feed Screen"> | <img src="docs/screenshots/Messages.jpeg" width="200"  alt="Messages Screen"> | <img src="docs/screenshots/Event.jpeg" width="200"  alt="Event Screen"> |  <img src="docs/screenshots/Profile.jpeg" width="200"  alt="Event Screen"> |
+| <img src="docs/screenshots/Homepage2.jpeg" width="200"  alt="Home Screen"> | <img src="docs/screenshots/feed_post.jpeg" width="200"  alt="Feed Screen"> | <img src="docs/screenshots/chat_screen.jpeg" width="200"  alt="Message Screen"> | <img src="docs/screenshots/feed_post.jpeg" width="200"  alt="Events Screen"> | <img src="docs/screenshots/edit_profile_screen.jpeg" width="200"  alt="Profile Screen"> |
+
+#### Drawer Screens-
+|  Drawer  |   Alumni Directory   |  My Connections  | Job & Mentorship | News & Updates | Campaigns & Donate |
+|------------------|------------------|------------------|------------------|------------------|------------------|
+| <img src="docs/screenshots/drawer.jpeg" width="200"  alt="Drawer"> | <img src="docs/screenshots/alumni_directory_screen.jpeg" width="200"  alt="Directory"> | <img src="docs/screenshots/connections_screen.jpeg" width="200"  alt="Order Details"> | <img src="docs/screenshots/job_and_mentorship_screen.jpeg" width="200"  alt="Connections"> | <img src="docs/screenshots/news_and_updates.jpeg" width="200"  alt="Job & Mentorship"> | <img src="docs/screenshots/news_and_updates.jpeg" width="200"  alt="News"> |
