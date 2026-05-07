@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 import 'services/notification_service.dart';
+import 'services/firestore_service.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
@@ -33,6 +34,13 @@ void main() async {
       print('Alumni Connect: Initializing Firebase...');
       await Firebase.initializeApp().timeout(const Duration(seconds: 5));
       print('Alumni Connect: Firebase initialized successfully');
+
+      // Run automatic cleanup of expired news and events
+      FirestoreService().cleanupExpiredData().then((_) {
+        print('Alumni Connect: Expired data cleanup completed');
+      }).catchError((e) {
+        print('Alumni Connect: Expired data cleanup failed: $e');
+      });
     } catch (e) {
       print('Alumni Connect: Firebase initialization failed or timed out: $e');
     }

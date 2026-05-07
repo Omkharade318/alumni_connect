@@ -166,8 +166,12 @@ class FirestoreService {
   }
 
   Stream<List<EventModel>> getEventsStream() {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    
     return _firestore
         .collection(AppConstants.eventsCollection)
+        .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(todayStart))
         .orderBy('date', descending: false)
         .snapshots()
         .map((snapshot) => snapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList());
@@ -199,6 +203,33 @@ class FirestoreService {
         await StorageService().deleteImageFromUrl(imageUrl);
       }
       await doc.reference.delete();
+    }
+  }
+
+  Future<void> cleanupExpiredData() async {
+    final now = DateTime.now();
+    
+    // 1. Cleanup News (older than 5 days)
+    final fiveDaysAgo = now.subtract(const Duration(days: 5));
+    final expiredNews = await _firestore.collection(AppConstants.newsCollection)
+        .where('createdAt', isLessThan: Timestamp.fromDate(fiveDaysAgo))
+        .get();
+    
+    for (var doc in expiredNews.docs) {
+      await deleteNews(doc.id);
+    }
+
+    // 2. Cleanup Events (expired the next day of the event date)
+    // If event is on Oct 27, it expires on Oct 28.
+    // So if today is Oct 28 or later, it's expired.
+    // Logic: event.date < today_start (where today_start is Oct 28 00:00)
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final expiredEvents = await _firestore.collection(AppConstants.eventsCollection)
+        .where('date', isLessThan: Timestamp.fromDate(todayStart))
+        .get();
+
+    for (var doc in expiredEvents.docs) {
+      await deleteEvent(doc.id);
     }
   }
 
@@ -721,8 +752,12 @@ class FirestoreService {
   // ──────────────── News & Updates ────────────────
 
   Stream<List<NewsModel>> getNewsStream() {
+    final now = DateTime.now();
+    final fiveDaysAgo = now.subtract(const Duration(days: 5));
+
     return _firestore
         .collection(AppConstants.newsCollection)
+        .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(fiveDaysAgo))
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) =>
