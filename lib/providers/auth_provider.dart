@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
+import '../utils/constants.dart';
 
 class AuthProvider with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -147,6 +148,7 @@ class AuthProvider with ChangeNotifier {
       // Store FCM token for push notifications
       if (_currentUser != null) {
         await NotificationService().storeTokenForUser(_currentUser!.uid);
+        await NotificationService().subscribeToTopic(AppConstants.allUsersTopic);
       }
 
       // Ensure error stays null on successful sign-in.
@@ -200,6 +202,7 @@ class AuthProvider with ChangeNotifier {
       // Store FCM token for push notifications
       if (_currentUser != null) {
         await NotificationService().storeTokenForUser(_currentUser!.uid);
+        await NotificationService().subscribeToTopic(AppConstants.allUsersTopic);
       }
 
       // Ensure error stays null on successful sign-up.
@@ -229,6 +232,7 @@ class AuthProvider with ChangeNotifier {
       // Store FCM token for push notifications
       if (_currentUser != null) {
         await NotificationService().storeTokenForUser(_currentUser!.uid);
+        await NotificationService().subscribeToTopic(AppConstants.allUsersTopic);
       }
 
       // Ensure error stays null on successful sign-in.

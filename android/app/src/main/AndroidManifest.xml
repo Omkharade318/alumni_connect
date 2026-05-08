@@ -17,7 +17,8 @@
 
     <application
         android:label="Alumni Connect"
-        android:name="${applicationName}">
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"

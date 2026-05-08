@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
+import 'package:googleapis_auth/auth_io.dart';
 import '../models/notification_model.dart';
 import '../screens/chat_screen.dart';
 import '../screens/messaging_screen.dart';
+import '../screens/news_screen.dart';
 import '../utils/constants.dart';
 import '../screens/connections_screen.dart';
 import '../screens/donation_screen.dart';
@@ -16,6 +20,40 @@ import '../services/firestore_service.dart';
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print("Handling a background message: ${message.messageId}");
+  
+  // For data-only messages in background, we might need to show a local notification
+  // if the notification block is missing.
+  if (message.notification == null) {
+    final title = message.data['title'] ?? 'New Notification';
+    final body = message.data['body'] ?? 'You have a new update';
+    
+    final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
+    const androidInit = AndroidInitializationSettings('ic_notification');
+    const iosInit = DarwinInitializationSettings();
+    await localNotifications.initialize(const InitializationSettings(android: androidInit, iOS: iosInit));
+
+    const channel = AndroidNotificationChannel(
+      'high_importance_channel_v4',
+      'High Importance Notifications',
+      importance: Importance.max,
+    );
+
+    await localNotifications.show(
+      message.hashCode,
+      title,
+      body,
+      NotificationDetails(
+        android: AndroidNotificationDetails(
+          channel.id,
+          channel.name,
+          importance: Importance.max,
+          priority: Priority.max,
+        ),
+        iOS: const DarwinNotificationDetails(presentAlert: true, presentSound: true),
+      ),
+      payload: message.data['type'],
+    );
+  }
 }
 
 class NotificationService {
@@ -30,10 +68,10 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
-    'high_importance_channel_v4', // Changed ID to force update
+    'high_importance_channel_v4',
     'High Importance Notifications',
     description: 'This channel is used for important notifications.',
-    importance: Importance.max, // MAX for heads-up
+    importance: Importance.max,
     playSound: true,
     enableVibration: true,
   );
@@ -41,7 +79,7 @@ class NotificationService {
   // ─── Initialization ──────────────────────────────────────────────────────────
 
   Future<void> initialize() async {
-    // 1. Request permissions (including Android 13+)
+    // 1. Request permissions
     await _fcm.requestPermission(
       alert: true,
       badge: true,
@@ -49,12 +87,11 @@ class NotificationService {
       provisional: false,
     );
     
-    // Explicitly request for Android 13+ if using newer flutter_local_notifications
     await _localNotifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.requestNotificationsPermission();
 
-    // 2. Create Android notification channel for heads-up banners
+    // 2. Create Android notification channel
     await _localNotifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(_channel);
@@ -65,41 +102,21 @@ class NotificationService {
     await _localNotifications.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
       onDidReceiveNotificationResponse: (response) {
-        // User tapped a local notification (foreground)
         final payload = response.payload;
-        if (payload == 'message') {
-          // Can't navigate without context here; handled via FCM data separately
-        } else if (payload == 'connectionRequest') {
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(builder: (_) => const ConnectionsScreen(initialTab: 1)),
-          );
-        } else if (payload == 'donation') {
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(builder: (_) => const DonationScreen()),
-          );
-        } else if (payload == 'event') {
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(builder: (_) => const EventsCalendarScreen()),
-          );
-        } else if (payload == 'job') {
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(builder: (_) => const JobsScreen()),
-          );
-        }
+        _handlePayload(payload);
       },
     );
 
     // 4. Register background message handler
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-    // Also tell FCM to show heads-up natively if payload contains a notification block (mainly for iOS, but good practice)
     await _fcm.setForegroundNotificationPresentationOptions(
       alert: true,
       badge: true,
       sound: true,
     );
 
-    // 5. Handle app opened from terminated state via notification
+    // 5. Handle app opened from terminated state
     try {
       final RemoteMessage? initialMessage = await _fcm.getInitialMessage().timeout(const Duration(seconds: 3));
       if (initialMessage != null) {
@@ -110,52 +127,209 @@ class NotificationService {
     }
   }
 
+  void _handlePayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+
+    try {
+      final data = jsonDecode(payload);
+      final type = data['type'];
+      final relatedId = data['relatedId'];
+      final senderId = data['senderId'];
+      final userId = data['userId'];
+
+      if (type == 'message' && relatedId != null && senderId != null) {
+        _navigateToChat(relatedId, senderId, userId);
+      } else {
+        _navigateToScreen(type);
+      }
+    } catch (e) {
+      // If not JSON, it might be the old simple payload
+      _navigateToScreen(payload);
+    }
+  }
+
+  void _navigateToScreen(String? type) {
+    if (type == 'connectionRequest') {
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const ConnectionsScreen(initialTab: 1)),
+      );
+    } else if (type == 'donation') {
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const DonationScreen()),
+      );
+    } else if (type == 'event') {
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const EventsCalendarScreen()),
+      );
+    } else if (type == 'job') {
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const JobsScreen()),
+      );
+    } else if (type == 'news') {
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const NewsScreen()),
+      );
+    }
+  }
+
+  Future<void> _navigateToChat(String relatedId, String senderId, String? userId) async {
+    final sender = await FirestoreService().getUser(senderId);
+    if (sender != null) {
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (_) => ChatScreen(
+            conversationId: relatedId,
+            otherUser: sender,
+            currentUserId: userId ?? '',
+          ),
+        ),
+      );
+    }
+  }
+
   void configureHandlers() {
-    // Foreground: show a local heads-up banner
     FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
       final notification = message.notification;
       
-      // Extract from notification block, fallback to data payload
       final title = notification?.title ?? message.data['title'] ?? 'New Notification';
       final body = notification?.body ?? message.data['body'] ?? 'You have a new message';
       final type = message.data['type'] ?? 'message';
-      final relatedId = message.data['relatedId'];
-      final senderId = message.data['senderId'] ?? '';
-      final senderName = message.data['senderName'] ?? 'Someone';
-      final userId = message.data['userId'] ?? '';
-
-      // 1. Show local banner
+      
       _showLocalNotification(
         title: title,
         body: body,
-        payload: type,
+        payload: jsonEncode({
+          'type': type,
+          'relatedId': message.data['relatedId'],
+          'senderId': message.data['senderId'],
+          'userId': message.data['userId'],
+        }),
       );
-
-      // 2. Save to Firestore (fallback in case sender didn't/couldn't save it)
-      // Only do this if we have a userId
-      if (userId.isNotEmpty) {
-        await createNotification(NotificationModel(
-          id: '',
-          userId: userId,
-          senderId: senderId,
-          senderName: senderName,
-          title: title,
-          body: body,
-          type: type == 'connectionRequest' 
-              ? NotificationType.connectionRequest 
-              : (type == 'donation' 
-                  ? NotificationType.donation 
-                  : (type == 'event' 
-                      ? NotificationType.event 
-                      : (type == 'job' ? NotificationType.job : NotificationType.message))),
-          createdAt: DateTime.now(),
-          relatedId: relatedId,
-        ));
-      }
     });
 
-    // Background/open: navigate to the right screen
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessage);
+  }
+
+  // ─── Push Notification Sending ──────────────────────────────────────────────
+
+  Future<void> sendPushNotification({
+    required String userId,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      // 1. Get user's FCM token
+      final userDoc = await _firestore.collection(AppConstants.usersCollection).doc(userId).get();
+      final String? token = userDoc.data()?['fcmToken'];
+
+      if (token == null) {
+        print('NotificationService: No FCM token found for user $userId');
+        return;
+      }
+
+      await _sendFCM(token: token, title: title, body: body, data: data);
+    } catch (e) {
+      print('Error sending push notification: $e');
+    }
+  }
+
+  Future<void> sendTopicNotification({
+    required String topic,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    await _sendFCM(topic: topic, title: title, body: body, data: data);
+  }
+
+  Future<String?> _getAccessToken() async {
+    try {
+      final credentials = ServiceAccountCredentials.fromJson(AppConstants.fcmServiceAccountJson);
+      final client = await clientViaServiceAccount(credentials, ['https://www.googleapis.com/auth/cloud-platform']);
+      final token = client.credentials.accessToken.data;
+      client.close();
+      return token;
+    } catch (e) {
+      print('Error getting FCM access token: $e');
+      return null;
+    }
+  }
+
+  Future<void> _sendFCM({
+    String? token,
+    String? topic,
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      final String? accessToken = await _getAccessToken();
+      if (accessToken == null) {
+        print('NotificationService: Failed to obtain OAuth 2.0 token.');
+        return;
+      }
+
+      const String url = 'https://fcm.googleapis.com/v1/projects/${AppConstants.fcmProjectId}/messages:send';
+
+      // FCM HTTP v1 payload structure
+      final Map<String, dynamic> payload = {
+        'message': {
+          if (token != null) 'token': token else 'topic': topic,
+          'notification': {
+            'title': title,
+            'body': body,
+          },
+          'data': {
+            ...data?.map((key, value) => MapEntry(key, value.toString())) ?? {},
+            'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+            'title': title,
+            'body': body,
+          },
+          'android': {
+            'priority': 'high',
+            'notification': {
+              'channel_id': 'high_importance_channel_v4',
+              'sound': 'default',
+            },
+          },
+          'apns': {
+            'payload': {
+              'aps': {
+                'sound': 'default',
+              },
+            },
+          },
+        }
+      };
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode(payload),
+      );
+
+      if (response.statusCode == 200) {
+        print('NotificationService: Push notification sent successfully via HTTP v1');
+      } else {
+        print('NotificationService: Failed to send push notification. Status: ${response.statusCode}, Body: ${response.body}');
+      }
+    } catch (e) {
+      print('Error in _sendFCM (v1): $e');
+    }
+  }
+
+  // ─── Topic Management ────────────────────────────────────────────────────────
+
+  Future<void> subscribeToTopic(String topic) async {
+    await _fcm.subscribeToTopic(topic);
+  }
+
+  Future<void> unsubscribeFromTopic(String topic) async {
+    await _fcm.unsubscribeFromTopic(topic);
   }
 
   // ─── Local Banner Notification ────────────────────────────────────────────────
@@ -166,7 +340,7 @@ class NotificationService {
     String payload = '',
   }) async {
     await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000, // unique id
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
       title,
       body,
       NotificationDetails(
@@ -177,7 +351,6 @@ class NotificationService {
           importance: Importance.max,
           priority: Priority.max,
           visibility: NotificationVisibility.public,
-          fullScreenIntent: true, // Helps with showing as a banner
         ),
         iOS: const DarwinNotificationDetails(presentAlert: true, presentSound: true),
       ),
@@ -196,34 +369,9 @@ class NotificationService {
     print('NotificationService: Handling message of type $type');
 
     if (type == 'message' && relatedId != null && senderId != null) {
-      final sender = await FirestoreService().getUser(senderId);
-      if (sender != null) {
-        navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
-              conversationId: relatedId,
-              otherUser: sender,
-              currentUserId: userId ?? '',
-            ),
-          ),
-        );
-      }
-    } else if (type == 'connectionRequest') {
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (_) => const ConnectionsScreen(initialTab: 1)),
-      );
-    } else if (type == 'donation') {
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (_) => const DonationScreen()),
-      );
-    } else if (type == 'event') {
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (_) => const EventsCalendarScreen()),
-      );
-    } else if (type == 'job') {
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (_) => const JobsScreen()),
-      );
+      _navigateToChat(relatedId, senderId, userId);
+    } else {
+      _navigateToScreen(type);
     }
   }
 
@@ -256,7 +404,6 @@ class NotificationService {
 
   // ─── Firestore notification CRUD ─────────────────────────────────────────────
 
-  /// FIX: Removed .orderBy() to avoid requiring a composite Firestore index.
   /// Documents are sorted client-side after fetching.
   Stream<List<NotificationModel>> getNotificationsStream(String userId) {
     return _firestore
@@ -273,10 +420,25 @@ class NotificationService {
     });
   }
 
-  Future<void> createNotification(NotificationModel notification) async {
+  Future<void> createNotification(NotificationModel notification, {bool sendPush = true}) async {
     await _firestore
         .collection(AppConstants.notificationsCollection)
         .add(notification.toFirestore());
+
+    if (sendPush) {
+      await sendPushNotification(
+        userId: notification.userId,
+        title: notification.title,
+        body: notification.body,
+        data: {
+          'type': notification.type.toString().split('.').last,
+          'relatedId': notification.relatedId,
+          'senderId': notification.senderId,
+          'senderName': notification.senderName,
+          'userId': notification.userId,
+        },
+      );
+    }
   }
 
   Future<void> markAsRead(String notificationId) async {
@@ -355,6 +517,15 @@ class NotificationService {
           context,
           MaterialPageRoute(
             builder: (_) => const JobsScreen(),
+          ),
+        );
+      }
+    } else if (notification.type == NotificationType.news) {
+      if (context.mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const NewsScreen(),
           ),
         );
       }

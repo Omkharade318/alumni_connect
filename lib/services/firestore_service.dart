@@ -446,6 +446,19 @@ class FirestoreService {
     }
     
     await batch.commit();
+
+    // Send push notification via topic for broad announcements
+    await NotificationService().sendTopicNotification(
+      topic: AppConstants.allUsersTopic,
+      title: title,
+      body: body,
+      data: {
+        'type': type.toString().split('.').last,
+        'relatedId': relatedId,
+        'senderId': senderId,
+        'senderName': senderName,
+      },
+    );
   }
 
   Stream<int> getUnreadMessagesCountStream(String userId) {
@@ -769,6 +782,14 @@ class FirestoreService {
         .collection(AppConstants.newsCollection)
         .doc(news.id)
         .set(news.toFirestore());
+    await notifyAllUsers(
+      title: 'New Update: ${news.title}',
+      body: news.body.length > 50 ? '${news.body.substring(0, 47)}...' : news.body,
+      type: NotificationType.news,
+      relatedId: news.id,
+      senderId: 'admin',
+      senderName: news.createdBy,
+    );
   }
 
   Future<void> updateNews(String newsId, Map<String, dynamic> data) async {

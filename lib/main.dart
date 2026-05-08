@@ -13,53 +13,28 @@ import 'screens/auth_check_screen.dart';
 import 'screens/admin/admin_gate_screen.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
   try {
-    WidgetsFlutterBinding.ensureInitialized();
-    print('Starting Alumni Connect initialization...');
-
-    // Initialize Supabase with a timeout
-    try {
-      print('Alumni Connect: Initializing Supabase...');
-      await Supabase.initialize(
-        url: 'https://pgfdqvtlpiiwvwvqzfgs.supabase.co',
-        anonKey: 'sb_publishable_4DyMdv2Uev08ejpJ6josCA_AUvsRNm_',
-      ).timeout(const Duration(seconds: 5));
-      print('Alumni Connect: Supabase initialized successfully');
-    } catch (e) {
-      print('Alumni Connect: Supabase initialization failed or timed out: $e');
-    }
-
-    // Initialize Firebase
-    try {
-      print('Alumni Connect: Initializing Firebase...');
-      await Firebase.initializeApp().timeout(const Duration(seconds: 5));
-      print('Alumni Connect: Firebase initialized successfully');
-
-      // Run automatic cleanup of expired news and events
-      FirestoreService().cleanupExpiredData().then((_) {
-        print('Alumni Connect: Expired data cleanup completed');
-      }).catchError((e) {
-        print('Alumni Connect: Expired data cleanup failed: $e');
-      });
-    } catch (e) {
-      print('Alumni Connect: Firebase initialization failed or timed out: $e');
-    }
+    await Firebase.initializeApp();
     
-    // Initialize notifications with error handling
-    try {
-      print('Alumni Connect: Initializing NotificationService...');
-      final notificationService = NotificationService();
-      await notificationService.initialize().timeout(const Duration(seconds: 5));
-      notificationService.configureHandlers();
-      print('Alumni Connect: Notifications initialized successfully');
-    } catch (e) {
-      print('Alumni Connect: Notification service initialization failed or timed out: $e');
-    }
+    // Background tasks (no need to wait for them to block app start)
+    Supabase.initialize(
+      url: 'https://pgfdqvtlpiiwvwvqzfgs.supabase.co',
+      anonKey: 'sb_publishable_4DyMdv2Uev08ejpJ6josCA_AUvsRNm_',
+    ).catchError((e) => print('Supabase init failed: $e'));
+
+    NotificationService().initialize().then((_) {
+      NotificationService().configureHandlers();
+    }).catchError((e) => print('Notification init failed: $e'));
+
+    FirestoreService().cleanupExpiredData().catchError((e) => print('Cleanup failed: $e'));
+    
   } catch (e) {
-    print('Critical initialization error: $e');
-  } finally {
-    runApp(const AlumniConnectApp());
+    print('Initialization error: $e');
   }
+
+  runApp(const AlumniConnectApp());
 }
 
 class AlumniConnectApp extends StatelessWidget {

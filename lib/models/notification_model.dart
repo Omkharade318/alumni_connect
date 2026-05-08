@@ -5,7 +5,8 @@ enum NotificationType {
   connectionRequest,
   donation,
   event,
-  job
+  job,
+  news
 }
 
 class NotificationModel {
