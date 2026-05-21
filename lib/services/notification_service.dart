@@ -464,7 +464,7 @@ class NotificationService {
         .map((snapshot) => snapshot.docs.length);
   }
 
-  // ─── In-app notification tap navigation ──────────────────────────────────────
+  //─── In-app notification tap navigation ──────────────────────────────────────
 
   void handleNotificationClick(BuildContext context, NotificationModel notification) async {
     print('NotificationService: In-app click for type ${notification.type}');
